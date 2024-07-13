@@ -1,9 +1,14 @@
 process.stdout.write('Welcome to Holberton School, what is your name?\n');
 
-if (process.stdin.isTTY) {
-    // if in interactive mode
-    process.stdin.on('data', (input) => {
-        const name = input.toString().trim();
-        
-    });
-}
+process.stdin.setEncoding('utf8');
+
+process.stdin.on('readable', () => {
+  const chunk = process.stdin.read();
+  if (chunk !== null) {
+    process.stdout.write(`Your name is: ${chunk}`);
+  }
+});
+
+process.stdin.on('end', () => {
+  process.stdout.write('This important software is now closing\n');
+});
