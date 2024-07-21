@@ -1,44 +1,63 @@
-const express = require('express'); // Import the Express module
-const fs = require('fs'); // Import the fs (filesystem) module
-const countStudents = require('./3-read_file_async'); // Import the countStudents function
+const express = require('express');
 
-const app = express(); // Create an instance of an Express application
-const port = 1245; // Define the port number to listen on
+const { readFile } = require('fs');
 
-// Define a route for the root path '/'
-app.get('/', (req, res) => {
-  res.send('Hello Holberton School!'); // Send the response "Hello Holberton School!" for the root path
-});
+const app = express();
+const port = 1245;
 
-// Define a route for the /students path
-app.get('/students', (req, res) => {
-  const database = process.argv[2]; // Get the database file path from the command line arguments
-
-  // Check if the database file is provided and exists
-  if (!database || !fs.existsSync(database)) {
-    res.status(500).send('Cannot load the database'); // Send an error message if the database is not available
-  } else {
-    res.write('This is the list of our students\n'); // Write the initial message to the response
-
-    countStudents(database)
-      .then((data) => {
-        res.write(data); // Write the student data to the response
-        res.end(); // End the response
-      })
-      .catch((error) => {
-        // Ensure the response ends only once by not attempting to set headers again if already sent
-        if (!res.headersSent) {
-          // Send an error message if there is an issue reading the database
-          res.status(500).send(error.message);
+function countStudents(fileName) {
+  const students = {};
+  const fields = {};
+  let length = 0;
+  return new Promise((resolve, reject) => {
+    readFile(fileName, (err, data) => {
+      if (err) {
+        reject(err);
+      } else {
+        let output = '';
+        const lines = data.toString().split('\n');
+        for (let i = 0; i < lines.length; i += 1) {
+          if (lines[i]) {
+            length += 1;
+            const field = lines[i].toString().split(',');
+            if (Object.prototype.hasOwnProperty.call(students, field[3])) {
+              students[field[3]].push(field[0]);
+            } else {
+              students[field[3]] = [field[0]];
+            }
+            if (Object.prototype.hasOwnProperty.call(fields, field[3])) {
+              fields[field[3]] += 1;
+            } else {
+              fields[field[3]] = 1;
+            }
+          }
         }
-      });
-  }
+        const l = length - 1;
+        output += `Number of students: ${l}\n`;
+        for (const [key, value] of Object.entries(fields)) {
+          if (key !== 'field') {
+            output += `Number of students in ${key}: ${value}. `;
+            output += `List: ${students[key].join(', ')}\n`;
+          }
+        }
+        resolve(output);
+      }
+    });
+  });
+}
+
+app.get('/', (req, res) => {
+  res.send('Hello Holberton School!');
+});
+app.get('/students', (req, res) => {
+  countStudents(process.argv[2].toString()).then((output) => {
+    res.send(['This is the list of our students', output].join('\n'));
+  }).catch(() => {
+    res.send('This is the list of our students\nCannot load the database');
+  });
 });
 
-// Start the HTTP server and listen on the specified port
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`); // Log a message when the server starts
 });
 
-// Export the Express application instance
 module.exports = app;
